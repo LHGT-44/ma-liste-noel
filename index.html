@@ -79,9 +79,9 @@
             <div class="dropdown-divider"></div>
             <button class="dropdown-item" id="btn-open-account-modal">
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              <span data-i18n="switchOrManageAccounts">Changer de compte</span>
+              <span data-i18n="switchOrManageAccounts">Compte / Connexion</span>
             </button>
-            <button class="dropdown-item" id="btn-quick-logout">
+            <button class="dropdown-item hidden" id="btn-quick-logout">
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
               <span data-i18n="logout">Se déconnecter</span>
             </button>
@@ -147,8 +147,8 @@
           </div>
           <div class="feature-card" id="feat-account-trigger">
             <div class="feature-icon-wrapper green-glow">🎅</div>
-            <h3 data-i18n="feat2Title">Système de Compte</h3>
-            <p data-i18n="feat2Desc">Gérez vos listes personnelles en toute simplicité directement depuis votre navigateur.</p>
+            <h3 data-i18n="feat2Title">Compte Cloud</h3>
+            <p data-i18n="feat2Desc">Créez votre compte pour retrouver votre liste de cadeaux sur tous vos appareils.</p>
           </div>
           <div class="feature-card" data-goto-tab="countdown">
             <div class="feature-icon-wrapper gold-glow">⏳</div>
@@ -165,7 +165,7 @@
         <div class="list-title-wrap">
           <h2 class="section-title">
             <span data-i18n="listTitle">Ma Liste de Souhaits</span>
-            <span class="festive-tag" id="current-account-tag">🎅 Invité</span>
+            <span class="festive-tag" id="current-account-tag">🎁 Invité</span>
           </h2>
           <p class="section-subtitle" data-i18n="listSubtitle">
             Rassemblez tous vos souhaits au même endroit pour un réveillon parfait.
@@ -190,17 +190,15 @@
           <input type="text" id="search-input" placeholder="Rechercher un cadeau..." data-i18n-ph="searchPlaceholder">
         </div>
         <div class="filter-chips">
-          <button type="button" class="chip active" data-filter="all" data-i18n="filterAll">Tous (<span id="count-all">0</span>)</button>
-          <button type="button" class="chip" data-filter="pending" data-i18n="filterPending">En attente (<span id="count-pending">0</span>)</button>
-          <button type="button" class="chip" data-filter="reserved" data-i18n="filterReserved">Réservés (<span id="count-reserved">0</span>)</button>
-          <button type="button" class="chip" data-filter="received" data-i18n="filterReceived">Reçus (<span id="count-received">0</span>)</button>
+          <button type="button" class="chip active" data-filter="all"><span data-i18n="filterAll">Tous</span> (<span id="count-all">0</span>)</button>
+          <button type="button" class="chip" data-filter="pending"><span data-i18n="filterPending">En attente</span> (<span id="count-pending">0</span>)</button>
+          <button type="button" class="chip" data-filter="reserved"><span data-i18n="filterReserved">Réservés</span> (<span id="count-reserved">0</span>)</button>
+          <button type="button" class="chip" data-filter="received"><span data-i18n="filterReceived">Reçus</span> (<span id="count-received">0</span>)</button>
         </div>
       </div>
 
       <!-- Grille des cadeaux -->
-      <div class="items-grid" id="items-grid">
-        <!-- Rempli dynamiquement en JS -->
-      </div>
+      <div class="items-grid" id="items-grid"></div>
 
       <!-- État vide quand la liste est vide -->
       <div class="empty-state hidden" id="empty-state">
@@ -312,14 +310,12 @@
             </div>
 
             <div class="image-inputs-flex">
-              <!-- Upload depuis le PC -->
               <label class="file-upload-btn">
                 <input type="file" id="item-file-input" accept="image/*">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                 <span data-i18n="formChooseFile">Choisir un fichier</span>
               </label>
 
-              <!-- Ou URL web directe -->
               <input type="url" id="item-url-input" placeholder="Ou collez l'URL d'une image (https://...)" data-i18n-ph="formUrlPlaceholder">
               
               <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-photo" title="Supprimer la photo">
@@ -348,52 +344,78 @@
     </div>
   </div>
 
-  <!-- MODAL : GESTION DES COMPTES (Créer, Se connecter, Changer) -->
+  <!-- MODAL : COMPTE CLOUD (Connexion / Inscription / Profil actif) -->
   <div class="modal-backdrop hidden" id="account-modal">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 data-i18n="accountModalTitle">Gestion des Profils & Comptes</h3>
+        <h3 data-i18n="accountModalTitle">Mon Compte Noël Magique</h3>
         <button type="button" class="modal-close-btn" id="btn-close-account-modal">&times;</button>
       </div>
 
       <div class="account-modal-body">
-        <p class="account-intro" data-i18n="accountIntro">
-          Chaque compte possède sa propre liste de cadeaux conservée dans votre navigateur.
-        </p>
-
-        <!-- Liste des profils existants -->
-        <div class="existing-profiles">
-          <label class="profiles-list-label" data-i18n="accountListTitle">Vos profils enregistrés :</label>
-          <div class="profiles-list" id="profiles-container">
-            <!-- Profils générés en JS -->
+        <!-- Vue quand l'utilisateur EST connecté -->
+        <div id="logged-in-view" class="hidden">
+          <div class="connected-profile-card">
+            <span class="profile-avatar" id="modal-user-avatar">🎅</span>
+            <div class="profile-meta">
+              <strong id="modal-user-name">Utilisateur</strong>
+              <span id="modal-user-email">email@exemple.com</span>
+            </div>
           </div>
+          <p class="account-intro" style="margin-top: 1rem;" data-i18n="cloudConnectedNotice">
+            Votre liste de cadeaux est synchronisée automatiquement dans le cloud. Vous pouvez y accéder depuis n'importe quel appareil.
+          </p>
+          <button type="button" class="btn btn-secondary btn-block" id="btn-modal-logout">
+            <span data-i18n="logout">Se déconnecter</span>
+          </button>
         </div>
 
-        <!-- Formulaire de création / connexion nouveau compte -->
-        <div class="new-account-box">
-          <h4 data-i18n="createAccountHeading">Créer un nouveau profil</h4>
-          <form id="create-account-form">
-            <div class="form-group">
-              <label for="new-username" data-i18n="accountNameLabel">Prénom ou Pseudo <span class="required">*</span></label>
-              <input type="text" id="new-username" required placeholder="Ex: Lucas, Marie, Papa..." data-i18n-ph="accountNamePlaceholder">
-            </div>
+        <!-- Vue quand l'utilisateur N'EST PAS connecté (Mode Invité) -->
+        <div id="logged-out-view">
+          <p class="account-intro" data-i18n="accountIntro">
+            Connectez-vous ou créez un compte gratuit pour sauvegarder votre liste en ligne et la retrouver partout.
+          </p>
 
-            <div class="form-group">
-              <label data-i18n="accountAvatarLabel">Choisissez votre avatar de Noël :</label>
-              <div class="avatar-picker" id="avatar-picker">
-                <button type="button" class="avatar-option selected" data-avatar="🎅">🎅</button>
-                <button type="button" class="avatar-option" data-avatar="🤶">🤶</button>
-                <button type="button" class="avatar-option" data-avatar="🦌">🦌</button>
-                <button type="button" class="avatar-option" data-avatar="⛄">⛄</button>
-                <button type="button" class="avatar-option" data-avatar="🎄">🎄</button>
-                <button type="button" class="avatar-option" data-avatar="⭐">⭐</button>
-                <button type="button" class="avatar-option" data-avatar="🎁">🎁</button>
-                <button type="button" class="avatar-option" data-avatar="🍪">🍪</button>
+          <div class="auth-tabs">
+            <button type="button" class="auth-tab-btn active" id="tab-btn-login" data-i18n="tabLogin">Se connecter</button>
+            <button type="button" class="auth-tab-btn" id="tab-btn-signup" data-i18n="tabSignup">Créer un compte</button>
+          </div>
+
+          <form id="auth-form" style="padding: 0;">
+            <!-- Champs affichés uniquement lors de l'inscription -->
+            <div id="signup-extra-fields" class="hidden">
+              <div class="form-group">
+                <label for="new-username" data-i18n="accountNameLabel">Prénom ou Pseudo <span class="required">*</span></label>
+                <input type="text" id="new-username" placeholder="Ex: Lucas, Marie..." data-i18n-ph="accountNamePlaceholder">
+              </div>
+
+              <div class="form-group">
+                <label data-i18n="accountAvatarLabel">Choisissez votre avatar de Noël :</label>
+                <div class="avatar-picker" id="avatar-picker">
+                  <button type="button" class="avatar-option selected" data-avatar="🎅">🎅</button>
+                  <button type="button" class="avatar-option" data-avatar="🤶">🤶</button>
+                  <button type="button" class="avatar-option" data-avatar="🦌">🦌</button>
+                  <button type="button" class="avatar-option" data-avatar="⛄">⛄</button>
+                  <button type="button" class="avatar-option" data-avatar="🎄">🎄</button>
+                  <button type="button" class="avatar-option" data-avatar="⭐">⭐</button>
+                  <button type="button" class="avatar-option" data-avatar="🎁">🎁</button>
+                  <button type="button" class="avatar-option" data-avatar="🍪">🍪</button>
+                </div>
               </div>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-block">
-              <span data-i18n="btnCreateAccount">Créer et utiliser ce profil</span>
+            <div class="form-group">
+              <label for="auth-email" data-i18n="authEmailLabel">Adresse e-mail <span class="required">*</span></label>
+              <input type="email" id="auth-email" required placeholder="vous@exemple.com">
+            </div>
+
+            <div class="form-group">
+              <label for="auth-password" data-i18n="authPasswordLabel">Mot de passe <small>(6 caractères min.)</small> <span class="required">*</span></label>
+              <input type="password" id="auth-password" required minlength="6" placeholder="••••••••">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" id="btn-auth-submit">
+              <span id="btn-auth-submit-text" data-i18n="btnLoginSubmit">Se connecter</span>
             </button>
           </form>
         </div>
@@ -408,10 +430,12 @@
   <footer class="app-footer">
     <div class="footer-content">
       <p>🎄 <strong data-i18n="footerTitle">Noël Magique</strong> • <span data-i18n="footerMadeWith">Fait avec amour pour préparer les fêtes</span> ✨</p>
-      <small data-i18n="footerLocalNotice">Données sécurisées et stockées localement dans votre navigateur.</small>
+      <small id="footer-storage-notice" data-i18n="footerLocalNotice">Mode invité : données stockées localement. Connectez-vous pour synchroniser dans le cloud.</small>
     </div>
   </footer>
 
+  <!-- SDK Supabase + Script principal -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
 </body>
 </html>
