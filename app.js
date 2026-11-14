@@ -1,12 +1,23 @@
 /**
  * ============================================================
- * NOËL MAGIQUE - APPLICATION JAVASCRIPT
- * Version blindée (Safe Storage, gestion d'erreurs par module,
- * support file:// et web, décompte immédiat et navigation réactive).
+ * NOËL MAGIQUE - APPLICATION JAVASCRIPT (AVEC SUPABASE CLOUD)
  * ============================================================
  */
 
-// --- ADAPTATEUR DE STOCKAGE SÉCURISÉ (Compatible file://, navigation privée, etc.) ---
+// --- CONFIGURATION SUPABASE (À REMPLIR AVEC TES IDENTIFIANTS) ---
+const SUPABASE_URL = 'https://TON-PROJET.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_TA_CLE_ICI';
+
+const isSupabaseConfigured =
+  typeof window.supabase !== 'undefined' &&
+  SUPABASE_URL.startsWith('https://') &&
+  !SUPABASE_URL.includes('TON-PROJET');
+
+const sb = isSupabaseConfigured
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null;
+
+// --- ADAPTATEUR DE STOCKAGE LOCAL (Pour le mode Invité et la langue) ---
 const Storage = {
   memory: {},
   get(key) {
@@ -14,9 +25,7 @@ const Storage = {
       if (typeof window !== 'undefined' && window.localStorage) {
         return window.localStorage.getItem(key);
       }
-    } catch (e) {
-      console.warn('LocalStorage non accessible, utilisation du stockage mémoire :', e);
-    }
+    } catch (e) {}
     return this.memory[key] !== undefined ? this.memory[key] : null;
   },
   set(key, val) {
@@ -25,9 +34,7 @@ const Storage = {
         window.localStorage.setItem(key, val);
         return;
       }
-    } catch (e) {
-      console.warn('Impossible d’écrire dans LocalStorage :', e);
-    }
+    } catch (e) {}
     this.memory[key] = String(val);
   },
   remove(key) {
@@ -49,8 +56,8 @@ const translations = {
     tabList: "Ma Liste",
     tabCountdown: "Compte à Rebours",
     accountGreeting: "Profil Actif",
-    switchOrManageAccounts: "Changer de compte",
-    logout: "Passer en Invité",
+    switchOrManageAccounts: "Compte / Connexion",
+    logout: "Se déconnecter",
     
     // Accueil
     heroBadge: "Édition Spéciale Fêtes",
@@ -68,8 +75,8 @@ const translations = {
     
     feat1Title: "Liste Personnalisée",
     feat1Desc: "Ajoutez vos souhaits avec nom, description, photo et lien pour ne rien oublier.",
-    feat2Title: "Système de Compte",
-    feat2Desc: "Gérez vos listes personnelles en toute simplicité directement depuis votre navigateur.",
+    feat2Title: "Compte Cloud",
+    feat2Desc: "Créez votre compte pour retrouver votre liste de cadeaux sur tous vos appareils.",
     feat3Title: "Compte à Rebours",
     feat3Desc: "Suivez en temps réel chaque seconde magique avant le passage du Père Noël.",
     
@@ -77,7 +84,7 @@ const translations = {
     listTitle: "Ma Liste de Souhaits",
     listSubtitle: "Rassemblez tous vos souhaits au même endroit pour un réveillon parfait.",
     btnAddItem: "Ajouter un cadeau",
-    btnShareList: "Partager la liste",
+    btnShareList: "Partager",
     searchPlaceholder: "Rechercher un cadeau...",
     filterAll: "Tous",
     filterPending: "En attente",
@@ -120,30 +127,35 @@ const translations = {
     btnCancel: "Annuler",
     btnSave: "Enregistrer le cadeau",
     
-    // Modal Comptes
-    accountModalTitle: "Gestion des Profils & Comptes",
-    accountIntro: "Chaque compte possède sa propre liste de cadeaux conservée dans votre navigateur.",
-    accountListTitle: "Vos profils enregistrés :",
-    createAccountHeading: "Créer un nouveau profil",
+    // Modal Comptes Cloud
+    accountModalTitle: "Mon Compte Noël Magique",
+    accountIntro: "Connectez-vous ou créez un compte gratuit pour sauvegarder votre liste en ligne et la retrouver partout.",
+    cloudConnectedNotice: "Votre liste de cadeaux est synchronisée automatiquement dans le cloud. Vous pouvez y accéder depuis n'importe quel appareil.",
+    tabLogin: "Se connecter",
+    tabSignup: "Créer un compte",
     accountNameLabel: "Prénom ou Pseudo",
-    accountNamePlaceholder: "Ex: Lucas, Marie, Papa...",
+    accountNamePlaceholder: "Ex: Lucas, Marie...",
     accountAvatarLabel: "Choisissez votre avatar de Noël :",
-    btnCreateAccount: "Créer et utiliser ce profil",
+    authEmailLabel: "Adresse e-mail",
+    authPasswordLabel: "Mot de passe (6 caractères min.)",
+    btnLoginSubmit: "Se connecter",
+    btnSignupSubmit: "Créer mon compte",
     guestProfile: "Invité",
-    activeBadge: "Actif",
     
     // Footer & Toasts
     footerTitle: "Noël Magique",
     footerMadeWith: "Fait avec amour pour préparer les fêtes",
-    footerLocalNotice: "Données sécurisées et stockées localement dans votre navigateur.",
+    footerLocalNotice: "Mode invité : données stockées localement. Connectez-vous pour synchroniser dans le cloud.",
+    footerCloudNotice: "Connecté au cloud : votre liste est sauvegardée en ligne.",
     
     toastGiftAdded: "🎁 Cadeau ajouté avec succès !",
     toastGiftUpdated: "✨ Cadeau mis à jour !",
     toastGiftDeleted: "🗑️ Cadeau retiré de la liste.",
-    toastProfileCreated: "🎅 Nouveau profil créé !",
-    toastProfileSwitched: "👤 Profil actif changé : ",
+    toastAccountCreated: "🎅 Compte créé et connecté !",
+    toastLoggedIn: "👤 Bon retour ",
+    toastLoggedOut: "👋 Déconnecté (Mode Invité)",
     toastListShared: "📋 Liste copiée dans le presse-papier !",
-    toastFileTooLarge: "⚠️ Image trop lourde (veuillez choisir une image de moins de 3 Mo)",
+    toastFileTooLarge: "⚠️ Image trop lourde (max 5 Mo)",
     confirmDelete: "Voulez-vous vraiment supprimer cet article de la liste ?"
   },
   
@@ -153,10 +165,9 @@ const translations = {
     tabList: "My Wishlist",
     tabCountdown: "Countdown",
     accountGreeting: "Active Profile",
-    switchOrManageAccounts: "Switch Account",
-    logout: "Switch to Guest",
+    switchOrManageAccounts: "Account / Login",
+    logout: "Log out",
     
-    // Home
     heroBadge: "Holiday Special Edition",
     heroTitlePart1: "Prepare for an",
     heroTitlePart2: "Unforgettable Christmas",
@@ -172,16 +183,15 @@ const translations = {
     
     feat1Title: "Personalized Wishlist",
     feat1Desc: "Add your wishes with name, description, picture, and link so you don't forget anything.",
-    feat2Title: "Local Accounts",
-    feat2Desc: "Manage distinct gift lists for everyone seamlessly in your browser.",
+    feat2Title: "Cloud Account",
+    feat2Desc: "Create your account to access your wishlist across all your devices.",
     feat3Title: "Live Countdown",
     feat3Desc: "Track every festive second before Santa arrives down the chimney.",
     
-    // List
     listTitle: "My Wishlist",
     listSubtitle: "Gather all your wishes in one festive place.",
     btnAddItem: "Add a gift",
-    btnShareList: "Share List",
+    btnShareList: "Share",
     searchPlaceholder: "Search for a gift...",
     filterAll: "All",
     filterPending: "Pending",
@@ -198,14 +208,12 @@ const translations = {
     visitLink: "View item online",
     noPhoto: "No picture",
     
-    // Countdown
     countdownBadge: "✨ Christmas Eve ✨",
     countdownHeading: "The Magical Countdown",
     countdownDesc: "Every second brings us closer to the most wonderful night of the year.",
     countdownTargetLabel: "Target Date: December 25th",
     btnNewQuote: "Another festive quote",
     
-    // Gift Modal
     modalAddItemTitle: "Add a Wish",
     modalEditItemTitle: "Edit Gift",
     formNameLabel: "Gift Name",
@@ -224,30 +232,33 @@ const translations = {
     btnCancel: "Cancel",
     btnSave: "Save Gift",
     
-    // Accounts Modal
-    accountModalTitle: "Profiles & Accounts Management",
-    accountIntro: "Each profile keeps its own separate wishlist saved directly in your browser.",
-    accountListTitle: "Saved profiles:",
-    createAccountHeading: "Create a new profile",
+    accountModalTitle: "My Magical Christmas Account",
+    accountIntro: "Sign in or create a free account to save your wishlist online and access it anywhere.",
+    cloudConnectedNotice: "Your wishlist is automatically synced to the cloud. You can access it from any device.",
+    tabLogin: "Sign In",
+    tabSignup: "Sign Up",
     accountNameLabel: "Name or Nickname",
-    accountNamePlaceholder: "Ex: Lucas, Mary, Dad...",
+    accountNamePlaceholder: "Ex: Lucas, Mary...",
     accountAvatarLabel: "Choose your holiday avatar:",
-    btnCreateAccount: "Create & Switch to Profile",
+    authEmailLabel: "Email address",
+    authPasswordLabel: "Password (min. 6 characters)",
+    btnLoginSubmit: "Sign In",
+    btnSignupSubmit: "Create Account",
     guestProfile: "Guest",
-    activeBadge: "Active",
     
-    // Footer & Toasts
     footerTitle: "Magical Christmas",
     footerMadeWith: "Crafted with love for the holiday season",
-    footerLocalNotice: "Data safely stored locally in your browser.",
+    footerLocalNotice: "Guest mode: data stored locally. Sign in to sync with the cloud.",
+    footerCloudNotice: "Connected to cloud: your wishlist is saved online.",
     
     toastGiftAdded: "🎁 Gift added successfully!",
     toastGiftUpdated: "✨ Gift updated!",
     toastGiftDeleted: "🗑️ Gift removed from list.",
-    toastProfileCreated: "🎅 New profile created!",
-    toastProfileSwitched: "👤 Active profile changed to: ",
+    toastAccountCreated: "🎅 Account created and signed in!",
+    toastLoggedIn: "👤 Welcome back ",
+    toastLoggedOut: "👋 Signed out (Guest Mode)",
     toastListShared: "📋 Wishlist copied to clipboard!",
-    toastFileTooLarge: "⚠️ Image too large (please choose an image under 3MB)",
+    toastFileTooLarge: "⚠️ Image too large (max 5MB)",
     confirmDelete: "Are you sure you want to delete this gift from the list?"
   }
 };
@@ -278,52 +289,21 @@ let currentImageBase64 = '';
 let editingItemId = null;
 let snowEnabled = true;
 
-const DEFAULT_ACCOUNTS = [
-  { id: 'guest', name: 'Invité', avatar: '🎁' }
-];
-
-let accounts = DEFAULT_ACCOUNTS;
-let activeAccountId = 'guest';
+let currentUser = null; // Utilisateur Supabase connecté (ou null = Invité)
+let cachedGifts = [];   // Liste en mémoire des cadeaux actifs
+let authMode = 'login'; // 'login' ou 'signup'
 let selectedNewAvatar = '🎅';
 
-function initState() {
-  try {
-    const savedLang = Storage.get('xmas_lang');
-    if (savedLang && (savedLang === 'fr' || savedLang === 'en')) {
-      currentLang = savedLang;
-    }
-
-    const savedAccounts = Storage.get('xmas_accounts');
-    if (savedAccounts) {
-      const parsed = JSON.parse(savedAccounts);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        accounts = parsed;
-      }
-    } else {
-      Storage.set('xmas_accounts', JSON.stringify(DEFAULT_ACCOUNTS));
-    }
-
-    const savedActiveAcc = Storage.get('xmas_active_account');
-    if (savedActiveAcc && accounts.some(a => a.id === savedActiveAcc)) {
-      activeAccountId = savedActiveAcc;
-    }
-  } catch (e) {
-    console.error('Erreur initialisation State :', e);
-  }
+function t(key) {
+  return (translations[currentLang] && translations[currentLang][key]) || key;
 }
 
-function getGiftsStorageKey(accId = activeAccountId) {
-  return `xmas_gifts_${accId}`;
-}
-
-function getGifts(accId = activeAccountId) {
+// --- GESTION DES DONNÉES (CLOUD SUPABASE OU INVITÉ LOCAL) ---
+function getGuestGifts() {
   try {
-    const data = Storage.get(getGiftsStorageKey(accId));
-    if (data) {
-      return JSON.parse(data);
-    }
-    // Données d'exemple pour la première visite sur le profil invité
-    if (accId === 'guest' && !Storage.get('xmas_demo_init')) {
+    const data = Storage.get('xmas_gifts_guest');
+    if (data) return JSON.parse(data);
+    if (!Storage.get('xmas_demo_init')) {
       const sample = [
         {
           id: 'gift_demo_1',
@@ -332,81 +312,85 @@ function getGifts(accId = activeAccountId) {
           price: '149 €',
           link: 'https://example.com/casque',
           image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80',
-          status: 'pending',
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'gift_demo_2',
-          name: 'Pull de Noël en laine',
-          desc: 'Taille M, avec motifs géométriques et rennes.',
-          price: '45 €',
-          link: '',
-          image: 'https://images.unsplash.com/photo-1543087903-1ac2ec7aa8c5?w=600&auto=format&fit=crop&q=80',
-          status: 'reserved',
-          createdAt: new Date().toISOString()
+          status: 'pending'
         }
       ];
-      Storage.set(getGiftsStorageKey('guest'), JSON.stringify(sample));
+      Storage.set('xmas_gifts_guest', JSON.stringify(sample));
       Storage.set('xmas_demo_init', 'true');
       return sample;
     }
-  } catch (e) {
-    console.error('Erreur getGifts :', e);
-  }
+  } catch (e) {}
   return [];
 }
 
-function saveGifts(gifts, accId = activeAccountId) {
-  try {
-    Storage.set(getGiftsStorageKey(accId), JSON.stringify(gifts));
-  } catch (e) {
-    console.error('Erreur saveGifts :', e);
+function saveGuestGifts(gifts) {
+  Storage.set('xmas_gifts_guest', JSON.stringify(gifts));
+}
+
+async function loadGifts() {
+  if (sb && currentUser) {
+    const { data, error } = await sb
+      .from('gifts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Erreur chargement Supabase :', error);
+      showToast('⚠️ ' + error.message);
+      cachedGifts = [];
+    } else {
+      cachedGifts = (data || []).map(row => ({
+        id: row.id,
+        name: row.name,
+        desc: row.description || '',
+        price: row.price || '',
+        link: row.link || '',
+        image: row.image || '',
+        status: row.status || 'pending'
+      }));
+    }
+  } else {
+    cachedGifts = getGuestGifts();
   }
+
+  renderGifts();
   updateListBadge();
 }
 
-function getActiveAccount() {
-  return accounts.find(a => a.id === activeAccountId) || accounts[0] || DEFAULT_ACCOUNTS[0];
+// --- INITIALISATION PRINCIPALE ---
+async function initApp() {
+  const savedLang = Storage.get('xmas_lang');
+  if (savedLang === 'fr' || savedLang === 'en') {
+    currentLang = savedLang;
+  }
+
+  try { initNavigation(); } catch (e) { console.error(e); }
+  try { initCountdown(); } catch (e) { console.error(e); }
+  try { initI18n(); } catch (e) { console.error(e); }
+  try { initAccountSystem(); } catch (e) { console.error(e); }
+  try { initDropdowns(); } catch (e) { console.error(e); }
+  try { initWishlist(); } catch (e) { console.error(e); }
+  try { initQuotes(); } catch (e) { console.error(e); }
+  try { initSnowCanvas(); } catch (e) { console.error(e); }
+
+  // Vérification de la session Supabase existante
+  if (sb) {
+    const { data: { session } } = await sb.auth.getSession();
+    currentUser = session ? session.user : null;
+    updateAccountUI();
+    await loadGifts();
+
+    sb.auth.onAuthStateChange(async (_event, session) => {
+      currentUser = session ? session.user : null;
+      updateAccountUI();
+      await loadGifts();
+    });
+  } else {
+    updateAccountUI();
+    await loadGifts();
+  }
 }
 
-function t(key) {
-  return (translations[currentLang] && translations[currentLang][key]) || key;
-}
-
-// --- INITIALISATION PRINCIPALE ROBUSTE ---
-function initApp() {
-  initState();
-
-  // 1. Navigation en priorité absolue
-  try { initNavigation(); } catch (e) { console.error('Erreur initNavigation :', e); }
-
-  // 2. Compte à rebours immédiat
-  try { initCountdown(); } catch (e) { console.error('Erreur initCountdown :', e); }
-
-  // 3. Traduction & interface
-  try { initI18n(); } catch (e) { console.error('Erreur initI18n :', e); }
-
-  // 4. Menu profils / comptes
-  try { initAccountSystem(); } catch (e) { console.error('Erreur initAccountSystem :', e); }
-
-  // 5. Menus déroulants
-  try { initDropdowns(); } catch (e) { console.error('Erreur initDropdowns :', e); }
-
-  // 6. Gestionnaire de la liste
-  try { initWishlist(); } catch (e) { console.error('Erreur initWishlist :', e); }
-
-  // 7. Citations festives
-  try { initQuotes(); } catch (e) { console.error('Erreur initQuotes :', e); }
-
-  // 8. Flocons de neige
-  try { initSnowCanvas(); } catch (e) { console.error('Erreur initSnowCanvas :', e); }
-
-  // 9. Rendu de la liste
-  try { renderGifts(); } catch (e) { console.error('Erreur renderGifts :', e); }
-  try { updateListBadge(); } catch (e) {}
-}
-
-// Lancement automatique dès que le DOM est prêt (ou immédiatement s'il l'est déjà)
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
 } else {
@@ -420,22 +404,12 @@ function initNavigation() {
 
   function switchTab(tabId) {
     activeTab = tabId;
-    
-    navButtons.forEach(btn => {
-      const isTarget = btn.getAttribute('data-tab') === tabId;
-      btn.classList.toggle('active', isTarget);
-    });
-
+    navButtons.forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId));
     tabPanels.forEach(panel => {
       const isTarget = panel.id === `tab-${tabId}`;
       panel.classList.toggle('active', isTarget);
-      if (isTarget) {
-        panel.style.display = 'block';
-      } else {
-        panel.style.display = 'none';
-      }
+      panel.style.display = isTarget ? 'block' : 'none';
     });
-
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -447,7 +421,6 @@ function initNavigation() {
     });
   });
 
-  // Liens / boutons internes
   document.querySelectorAll('[data-goto-tab]').forEach(el => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
@@ -456,94 +429,67 @@ function initNavigation() {
     });
   });
 
-  // Clic logo = retour accueil
   const brandLogo = document.getElementById('brand-logo');
-  if (brandLogo) {
-    brandLogo.addEventListener('click', () => switchTab('home'));
-  }
+  if (brandLogo) brandLogo.addEventListener('click', () => switchTab('home'));
 
-  // Activer l'onglet accueil par défaut
   switchTab('home');
 }
 
-// --- 2. COMPTE À REBOURS GÉANT & MINI DÉCOMPTE ---
+// --- 2. COMPTE À REBOURS ---
 function initCountdown() {
   const cdDays = document.getElementById('cd-days');
   const cdHours = document.getElementById('cd-hours');
   const cdMinutes = document.getElementById('cd-minutes');
   const cdSeconds = document.getElementById('cd-seconds');
-
   const miniDays = document.getElementById('mini-days');
   const miniHours = document.getElementById('mini-hours');
   const miniMinutes = document.getElementById('mini-minutes');
   const miniSeconds = document.getElementById('mini-seconds');
-
   const targetYearDisplay = document.getElementById('target-year-display');
 
   function getTargetChristmas() {
     const now = new Date();
     let year = now.getFullYear();
-    // 25 Décembre à 00h00
     let target = new Date(year, 11, 25, 0, 0, 0);
-
-    // Si le 25 décembre de cette année est déjà dépassé
     if (now.getTime() > target.getTime()) {
       year += 1;
       target = new Date(year, 11, 25, 0, 0, 0);
     }
-
-    if (targetYearDisplay) {
-      targetYearDisplay.textContent = String(year);
-    }
-
+    if (targetYearDisplay) targetYearDisplay.textContent = String(year);
     return target;
   }
 
-  let targetDate = getTargetChristmas();
+  const targetDate = getTargetChristmas();
 
   function updateTimer() {
-    const now = new Date();
-    const diff = targetDate.getTime() - now.getTime();
-
+    const diff = targetDate.getTime() - Date.now();
     if (diff <= 0) {
-      // Jour de Noël !
-      const zeros = '00';
-      if (cdDays) cdDays.textContent = zeros;
-      if (cdHours) cdHours.textContent = zeros;
-      if (cdMinutes) cdMinutes.textContent = zeros;
-      if (cdSeconds) cdSeconds.textContent = zeros;
-
-      if (miniDays) miniDays.textContent = zeros;
-      if (miniHours) miniHours.textContent = zeros;
-      if (miniMinutes) miniMinutes.textContent = zeros;
-      if (miniSeconds) miniSeconds.textContent = zeros;
+      [cdDays, cdHours, cdMinutes, cdSeconds, miniDays, miniHours, miniMinutes, miniSeconds].forEach(el => {
+        if (el) el.textContent = '00';
+      });
       return;
     }
-
-    const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
-    const m = Math.floor((diff / (1000 * 60)) % 60);
-    const s = Math.floor((diff / 1000) % 60);
-
     const pad = (n) => String(n).padStart(2, '0');
+    const d = pad(Math.floor(diff / (1000 * 60 * 60 * 24)));
+    const h = pad(Math.floor((diff / (1000 * 60 * 60)) % 24));
+    const m = pad(Math.floor((diff / (1000 * 60)) % 60));
+    const s = pad(Math.floor((diff / 1000) % 60));
 
-    if (cdDays) cdDays.textContent = pad(d);
-    if (cdHours) cdHours.textContent = pad(h);
-    if (cdMinutes) cdMinutes.textContent = pad(m);
-    if (cdSeconds) cdSeconds.textContent = pad(s);
-
-    if (miniDays) miniDays.textContent = pad(d);
-    if (miniHours) miniHours.textContent = pad(h);
-    if (miniMinutes) miniMinutes.textContent = pad(m);
-    if (miniSeconds) miniSeconds.textContent = pad(s);
+    if (cdDays) cdDays.textContent = d;
+    if (cdHours) cdHours.textContent = h;
+    if (cdMinutes) cdMinutes.textContent = m;
+    if (cdSeconds) cdSeconds.textContent = s;
+    if (miniDays) miniDays.textContent = d;
+    if (miniHours) miniHours.textContent = h;
+    if (miniMinutes) miniMinutes.textContent = m;
+    if (miniSeconds) miniSeconds.textContent = s;
   }
 
-  // Mise à jour immédiate synchrone
   updateTimer();
   setInterval(updateTimer, 1000);
 }
 
-// --- 3. GESTION DES LANGUES (i18n) ---
+// --- 3. LANGUES (i18n) ---
 function initI18n() {
   const langBtn = document.getElementById('lang-btn');
   const langDropdown = document.getElementById('lang-dropdown');
@@ -555,10 +501,9 @@ function initI18n() {
     Storage.set('xmas_lang', lang);
     document.documentElement.lang = lang;
 
-    if (currentLangFlag) currentLangFlag.textContent = (lang === 'fr' ? '🇫🇷' : '🇬🇧');
-    if (currentLangCode) currentLangCode.textContent = (lang === 'fr' ? 'FR' : 'EN');
+    if (currentLangFlag) currentLangFlag.textContent = lang === 'fr' ? '🇫🇷' : '🇬🇧';
+    if (currentLangCode) currentLangCode.textContent = lang === 'fr' ? 'FR' : 'EN';
 
-    // Mettre à jour tous les libellés avec data-i18n
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
       if (translations[lang] && translations[lang][key]) {
@@ -566,7 +511,6 @@ function initI18n() {
       }
     });
 
-    // Mettre à jour tous les placeholders avec data-i18n-ph
     document.querySelectorAll('[data-i18n-ph]').forEach(el => {
       const key = el.getAttribute('data-i18n-ph');
       if (translations[lang] && translations[lang][key]) {
@@ -574,10 +518,9 @@ function initI18n() {
       }
     });
 
-    try { renderGifts(); } catch (e) {}
-    try { renderAccountProfiles(); } catch (e) {}
-    try { updateActiveAccountDisplay(); } catch (e) {}
-    try { displayRandomQuote(); } catch (e) {}
+    updateAccountUI();
+    renderGifts();
+    displayRandomQuote();
   }
 
   if (langBtn && langDropdown) {
@@ -620,19 +563,72 @@ function initDropdowns() {
   });
 }
 
-// --- 5. SYSTÈME DE COMPTES & PROFILS ---
+// --- 5. SYSTÈME DE COMPTES CLOUD (SUPABASE AUTH) ---
+function getUserDisplayInfo() {
+  if (currentUser) {
+    const meta = currentUser.user_metadata || {};
+    return {
+      name: meta.username || currentUser.email.split('@')[0],
+      avatar: meta.avatar || '🎅',
+      email: currentUser.email
+    };
+  }
+  return { name: t('guestProfile'), avatar: '🎁', email: '' };
+}
+
+function updateAccountUI() {
+  const info = getUserDisplayInfo();
+  const navAvatar = document.getElementById('nav-user-avatar');
+  const navName = document.getElementById('nav-user-name');
+  const dropUser = document.getElementById('dropdown-username');
+  const tag = document.getElementById('current-account-tag');
+  const quickLogout = document.getElementById('btn-quick-logout');
+  const footerNotice = document.getElementById('footer-storage-notice');
+
+  if (navAvatar) navAvatar.textContent = info.avatar;
+  if (navName) navName.textContent = info.name;
+  if (dropUser) dropUser.textContent = `${info.avatar} ${info.name}`;
+  if (tag) tag.textContent = `${info.avatar} ${info.name}`;
+
+  if (quickLogout) quickLogout.classList.toggle('hidden', !currentUser);
+  if (footerNotice) {
+    footerNotice.textContent = currentUser ? t('footerCloudNotice') : t('footerLocalNotice');
+  }
+
+  // Mise à jour de l'intérieur de la modale compte
+  const loggedInView = document.getElementById('logged-in-view');
+  const loggedOutView = document.getElementById('logged-out-view');
+  if (loggedInView && loggedOutView) {
+    if (currentUser) {
+      loggedInView.classList.remove('hidden');
+      loggedOutView.classList.add('hidden');
+      document.getElementById('modal-user-avatar').textContent = info.avatar;
+      document.getElementById('modal-user-name').textContent = info.name;
+      document.getElementById('modal-user-email').textContent = info.email;
+    } else {
+      loggedInView.classList.add('hidden');
+      loggedOutView.classList.remove('hidden');
+    }
+  }
+}
+
 function initAccountSystem() {
   const accountModal = document.getElementById('account-modal');
   const openModalBtn = document.getElementById('btn-open-account-modal');
   const closeModalBtn = document.getElementById('btn-close-account-modal');
   const featAccountTrigger = document.getElementById('feat-account-trigger');
   const quickLogoutBtn = document.getElementById('btn-quick-logout');
-  const createAccountForm = document.getElementById('create-account-form');
-  const newUsernameInput = document.getElementById('new-username');
+  const modalLogoutBtn = document.getElementById('btn-modal-logout');
+
+  const tabLoginBtn = document.getElementById('tab-btn-login');
+  const tabSignupBtn = document.getElementById('tab-btn-signup');
+  const signupExtra = document.getElementById('signup-extra-fields');
+  const submitText = document.getElementById('btn-auth-submit-text');
+  const authForm = document.getElementById('auth-form');
   const avatarButtons = document.querySelectorAll('.avatar-option');
 
   function openAccountModal() {
-    renderAccountProfiles();
+    updateAccountUI();
     if (accountModal) accountModal.classList.remove('hidden');
     const uDrop = document.getElementById('user-dropdown');
     if (uDrop) uDrop.classList.remove('show');
@@ -642,15 +638,29 @@ function initAccountSystem() {
     if (accountModal) accountModal.classList.add('hidden');
   }
 
+  function setAuthMode(mode) {
+    authMode = mode;
+    if (tabLoginBtn) tabLoginBtn.classList.toggle('active', mode === 'login');
+    if (tabSignupBtn) tabSignupBtn.classList.toggle('active', mode === 'signup');
+    if (signupExtra) signupExtra.classList.toggle('hidden', mode === 'login');
+    const usernameInput = document.getElementById('new-username');
+    if (usernameInput) usernameInput.required = (mode === 'signup');
+    if (submitText) {
+      submitText.textContent = mode === 'login' ? t('btnLoginSubmit') : t('btnSignupSubmit');
+    }
+  }
+
   if (openModalBtn) openModalBtn.addEventListener('click', openAccountModal);
   if (featAccountTrigger) featAccountTrigger.addEventListener('click', openAccountModal);
   if (closeModalBtn) closeModalBtn.addEventListener('click', closeAccountModal);
-
   if (accountModal) {
     accountModal.addEventListener('click', (e) => {
       if (e.target === accountModal) closeAccountModal();
     });
   }
+
+  if (tabLoginBtn) tabLoginBtn.addEventListener('click', () => setAuthMode('login'));
+  if (tabSignupBtn) tabSignupBtn.addEventListener('click', () => setAuthMode('signup'));
 
   avatarButtons.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -660,106 +670,102 @@ function initAccountSystem() {
     });
   });
 
-  if (createAccountForm) {
-    createAccountForm.addEventListener('submit', (e) => {
+  if (authForm) {
+    authForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const name = newUsernameInput ? newUsernameInput.value.trim() : '';
-      if (!name) return;
+      if (!sb) {
+        showToast('⚠️ Configure SUPABASE_URL et SUPABASE_KEY dans app.js');
+        return;
+      }
 
-      const newId = 'acc_' + Date.now();
-      const newAcc = {
-        id: newId,
-        name: name,
-        avatar: selectedNewAvatar || '🎅'
-      };
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value;
+      const username = document.getElementById('new-username').value.trim();
+      const submitBtn = document.getElementById('btn-auth-submit');
 
-      accounts.push(newAcc);
-      Storage.set('xmas_accounts', JSON.stringify(accounts));
-      
-      switchAccount(newId);
-      if (newUsernameInput) newUsernameInput.value = '';
-      closeAccountModal();
-      showToast(t('toastProfileCreated'));
-    });
-  }
+      submitBtn.disabled = true;
 
-  if (quickLogoutBtn) {
-    quickLogoutBtn.addEventListener('click', () => {
-      switchAccount('guest');
-      const uDrop = document.getElementById('user-dropdown');
-      if (uDrop) uDrop.classList.remove('show');
-    });
-  }
+      try {
+        if (authMode === 'signup') {
+          const { data, error } = await sb.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                username: username || email.split('@')[0],
+                avatar: selectedNewAvatar || '🎅'
+              }
+            }
+          });
+          if (error) throw error;
+          currentUser = data.user;
+          showToast(t('toastAccountCreated'));
+        } else {
+          const { data, error } = await sb.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          currentUser = data.user;
+          const info = getUserDisplayInfo();
+          showToast(t('toastLoggedIn') + info.name + ' !');
+        }
 
-  updateActiveAccountDisplay();
-}
-
-function switchAccount(accId) {
-  activeAccountId = accId;
-  Storage.set('xmas_active_account', accId);
-  updateActiveAccountDisplay();
-  renderAccountProfiles();
-  renderGifts();
-  updateListBadge();
-  const acc = getActiveAccount();
-  const name = acc.name === 'Invité' ? t('guestProfile') : acc.name;
-  showToast(t('toastProfileSwitched') + name);
-}
-
-function updateActiveAccountDisplay() {
-  const acc = getActiveAccount();
-  const displayName = acc.name === 'Invité' ? t('guestProfile') : acc.name;
-  
-  const navAvatar = document.getElementById('nav-user-avatar');
-  const navName = document.getElementById('nav-user-name');
-  const dropUser = document.getElementById('dropdown-username');
-  const tag = document.getElementById('current-account-tag');
-
-  if (navAvatar) navAvatar.textContent = acc.avatar;
-  if (navName) navName.textContent = displayName;
-  if (dropUser) dropUser.textContent = `${acc.avatar} ${displayName}`;
-  if (tag) tag.textContent = `${acc.avatar} ${displayName}`;
-}
-
-function renderAccountProfiles() {
-  const container = document.getElementById('profiles-container');
-  if (!container) return;
-  container.innerHTML = '';
-
-  accounts.forEach(acc => {
-    const isAct = acc.id === activeAccountId;
-    const giftsCount = getGifts(acc.id).length;
-    const item = document.createElement('div');
-    item.className = `profile-item ${isAct ? 'active' : ''}`;
-    
-    const displayName = acc.name === 'Invité' ? t('guestProfile') : acc.name;
-
-    item.innerHTML = `
-      <div class="profile-left">
-        <span class="profile-avatar">${acc.avatar}</span>
-        <div class="profile-meta">
-          <strong>${displayName} ${isAct ? `<small style="color:var(--accent-green);font-weight:bold;">(${t('activeBadge')})</small>` : ''}</strong>
-          <span>${giftsCount} ${t('tabList').toLowerCase()}</span>
-        </div>
-      </div>
-      <div>
-        ${!isAct ? `<button class="btn btn-secondary btn-sm switch-btn">${t('switchOrManageAccounts')}</button>` : ''}
-      </div>
-    `;
-
-    item.addEventListener('click', () => {
-      if (!isAct) {
-        switchAccount(acc.id);
-        const modal = document.getElementById('account-modal');
-        if (modal) modal.classList.add('hidden');
+        authForm.reset();
+        updateAccountUI();
+        await loadGifts();
+        closeAccountModal();
+      } catch (err) {
+        showToast('⚠️ ' + (err.message || 'Erreur de connexion'));
+      } finally {
+        submitBtn.disabled = false;
       }
     });
+  }
 
-    container.appendChild(item);
+  async function handleLogout() {
+    if (sb) await sb.auth.signOut();
+    currentUser = null;
+    updateAccountUI();
+    await loadGifts();
+    closeAccountModal();
+    showToast(t('toastLoggedOut'));
+  }
+
+  if (quickLogoutBtn) quickLogoutBtn.addEventListener('click', handleLogout);
+  if (modalLogoutBtn) modalLogoutBtn.addEventListener('click', handleLogout);
+}
+
+// --- 6. COMPRESSION D'IMAGE (POUR UN CHARGEMENT CLOUD RAPIDE) ---
+function compressImageFile(file, maxSize = 800, quality = 0.78) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxSize || height > maxSize) {
+          if (width > height) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          } else {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   });
 }
 
-// --- 6. GESTION DE LA LISTE DE SOUHAITS ---
+// --- 7. GESTION DE LA LISTE DE SOUHAITS ---
 function initWishlist() {
   const itemModal = document.getElementById('item-modal');
   const btnShowAdd = document.getElementById('btn-show-add-modal');
@@ -781,23 +787,16 @@ function initWishlist() {
     
     if (itemToEdit) {
       if (modalTitle) modalTitle.textContent = t('modalEditItemTitle');
-      const fId = document.getElementById('form-item-id');
-      const fName = document.getElementById('item-name');
-      const fDesc = document.getElementById('item-desc');
-      const fPrice = document.getElementById('item-price');
-      const fLink = document.getElementById('item-link');
-
-      if (fId) fId.value = itemToEdit.id;
-      if (fName) fName.value = itemToEdit.name;
-      if (fDesc) fDesc.value = itemToEdit.desc || '';
-      if (fPrice) fPrice.value = itemToEdit.price || '';
-      if (fLink) fLink.value = itemToEdit.link || '';
+      document.getElementById('form-item-id').value = itemToEdit.id;
+      document.getElementById('item-name').value = itemToEdit.name;
+      document.getElementById('item-desc').value = itemToEdit.desc || '';
+      document.getElementById('item-price').value = itemToEdit.price || '';
+      document.getElementById('item-link').value = itemToEdit.link || '';
       currentImageBase64 = itemToEdit.image || '';
     } else {
       if (modalTitle) modalTitle.textContent = t('modalAddItemTitle');
       if (itemForm) itemForm.reset();
-      const fId = document.getElementById('form-item-id');
-      if (fId) fId.value = '';
+      document.getElementById('form-item-id').value = '';
       currentImageBase64 = '';
     }
 
@@ -825,23 +824,23 @@ function initWishlist() {
   }
 
   if (fileInput) {
-    fileInput.addEventListener('change', (e) => {
+    fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
-      if (file.size > 3 * 1024 * 1024) {
+      if (file.size > 5 * 1024 * 1024) {
         showToast(t('toastFileTooLarge'));
         fileInput.value = '';
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        currentImageBase64 = event.target.result;
+      try {
+        currentImageBase64 = await compressImageFile(file);
         if (urlInput) urlInput.value = '';
         updateImagePreview();
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error('Erreur compression image :', err);
+      }
     });
   }
 
@@ -878,55 +877,70 @@ function initWishlist() {
   }
 
   if (itemForm) {
-    itemForm.addEventListener('submit', (e) => {
+    itemForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const nameEl = document.getElementById('item-name');
-      const descEl = document.getElementById('item-desc');
-      const priceEl = document.getElementById('item-price');
-      const linkEl = document.getElementById('item-link');
-
-      const name = nameEl ? nameEl.value.trim() : '';
-      const desc = descEl ? descEl.value.trim() : '';
-      const price = priceEl ? priceEl.value.trim() : '';
-      const link = linkEl ? linkEl.value.trim() : '';
+      const name = document.getElementById('item-name').value.trim();
+      const desc = document.getElementById('item-desc').value.trim();
+      const price = document.getElementById('item-price').value.trim();
+      const link = document.getElementById('item-link').value.trim();
+      const saveBtn = document.getElementById('btn-save-item');
 
       if (!name) return;
+      saveBtn.disabled = true;
 
-      let gifts = getGifts();
-
-      if (editingItemId) {
-        gifts = gifts.map(g => {
-          if (g.id === editingItemId) {
-            return {
-              ...g,
+      try {
+        if (sb && currentUser) {
+          if (editingItemId) {
+            const { error } = await sb
+              .from('gifts')
+              .update({ name, description: desc, price, link, image: currentImageBase64 })
+              .eq('id', editingItemId);
+            if (error) throw error;
+            showToast(t('toastGiftUpdated'));
+          } else {
+            const { error } = await sb
+              .from('gifts')
+              .insert([{
+                user_id: currentUser.id,
+                name,
+                description: desc,
+                price,
+                link,
+                image: currentImageBase64,
+                status: 'pending'
+              }]);
+            if (error) throw error;
+            showToast(t('toastGiftAdded'));
+          }
+          await loadGifts();
+        } else {
+          // Mode Invité (localStorage)
+          let gifts = getGuestGifts();
+          if (editingItemId) {
+            gifts = gifts.map(g => g.id === editingItemId ? { ...g, name, desc, price, link, image: currentImageBase64 } : g);
+            showToast(t('toastGiftUpdated'));
+          } else {
+            gifts.unshift({
+              id: 'gift_' + Date.now(),
               name,
               desc,
               price,
               link,
-              image: currentImageBase64
-            };
+              image: currentImageBase64,
+              status: 'pending'
+            });
+            showToast(t('toastGiftAdded'));
           }
-          return g;
-        });
-        showToast(t('toastGiftUpdated'));
-      } else {
-        const newItem = {
-          id: 'gift_' + Date.now(),
-          name,
-          desc,
-          price,
-          link,
-          image: currentImageBase64,
-          status: 'pending',
-          createdAt: new Date().toISOString()
-        };
-        gifts.unshift(newItem);
-        showToast(t('toastGiftAdded'));
-      }
+          saveGuestGifts(gifts);
+          await loadGifts();
+        }
 
-      saveGifts(gifts);
-      renderGifts();
-      closeGiftModal();
+        closeGiftModal();
+      } catch (err) {
+        showToast('⚠️ ' + (err.message || 'Erreur lors de la sauvegarde'));
+      } finally {
+        saveBtn.disabled = false;
+      }
     });
   }
 
@@ -948,17 +962,14 @@ function initWishlist() {
 
   if (btnExport) {
     btnExport.addEventListener('click', () => {
-      const gifts = getGifts();
-      const acc = getActiveAccount();
-      const accName = acc.name === 'Invité' ? t('guestProfile') : acc.name;
-
-      if (gifts.length === 0) {
+      const info = getUserDisplayInfo();
+      if (cachedGifts.length === 0) {
         showToast(t('emptyStateTitle'));
         return;
       }
 
-      let textToCopy = `🎄 ${t('listTitle')} - ${accName} ✨\n\n`;
-      gifts.forEach((g, idx) => {
+      let textToCopy = `🎄 ${t('listTitle')} - ${info.name} ✨\n\n`;
+      cachedGifts.forEach((g, idx) => {
         textToCopy += `${idx + 1}. ${g.name}`;
         if (g.price) textToCopy += ` (${g.price})`;
         if (g.desc) textToCopy += `\n   - Note : ${g.desc}`;
@@ -967,11 +978,9 @@ function initWishlist() {
       });
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(textToCopy).then(() => {
-          showToast(t('toastListShared'));
-        }).catch(() => {
-          prompt('Copiez votre liste ci-dessous :', textToCopy);
-        });
+        navigator.clipboard.writeText(textToCopy)
+          .then(() => showToast(t('toastListShared')))
+          .catch(() => prompt('Copiez votre liste ci-dessous :', textToCopy));
       } else {
         prompt('Copiez votre liste ci-dessous :', textToCopy);
       }
@@ -979,7 +988,7 @@ function initWishlist() {
   }
 
   window.openEditGiftModal = (id) => {
-    const item = getGifts().find(g => g.id === id);
+    const item = cachedGifts.find(g => g.id === id);
     if (item) openGiftModal(item);
   };
 }
@@ -990,26 +999,22 @@ function renderGifts() {
   const emptyState = document.getElementById('empty-state');
   if (!container) return;
 
-  const allGifts = getGifts();
+  const allGifts = cachedGifts;
 
   const cAll = document.getElementById('count-all');
   const cPending = document.getElementById('count-pending');
   const cReserved = document.getElementById('count-reserved');
   const cReceived = document.getElementById('count-received');
 
-  const pendingCount = allGifts.filter(g => g.status === 'pending').length;
-  const reservedCount = allGifts.filter(g => g.status === 'reserved').length;
-  const receivedCount = allGifts.filter(g => g.status === 'received').length;
-
   if (cAll) cAll.textContent = String(allGifts.length);
-  if (cPending) cPending.textContent = String(pendingCount);
-  if (cReserved) cReserved.textContent = String(reservedCount);
-  if (cReceived) cReceived.textContent = String(receivedCount);
+  if (cPending) cPending.textContent = String(allGifts.filter(g => g.status === 'pending').length);
+  if (cReserved) cReserved.textContent = String(allGifts.filter(g => g.status === 'reserved').length);
+  if (cReceived) cReceived.textContent = String(allGifts.filter(g => g.status === 'received').length);
 
-  let filtered = allGifts.filter(g => {
+  const filtered = allGifts.filter(g => {
     const matchFilter = (currentFilter === 'all') || (g.status === currentFilter);
-    const matchSearch = !searchQuery || 
-      g.name.toLowerCase().includes(searchQuery) || 
+    const matchSearch = !searchQuery ||
+      g.name.toLowerCase().includes(searchQuery) ||
       (g.desc && g.desc.toLowerCase().includes(searchQuery));
     return matchFilter && matchSearch;
   });
@@ -1082,70 +1087,56 @@ function renderGifts() {
       </div>
     `;
 
-    // Attachement propre des écouteurs
-    const select = card.querySelector('.status-select-btn');
-    if (select) {
-      select.addEventListener('change', (e) => {
-        changeGiftStatus(gift.id, e.target.value);
-      });
-    }
-
-    const editBtn = card.querySelector('.btn-edit');
-    if (editBtn) {
-      editBtn.addEventListener('click', () => {
-        if (window.openEditGiftModal) window.openEditGiftModal(gift.id);
-      });
-    }
-
-    const delBtn = card.querySelector('.btn-del');
-    if (delBtn) {
-      delBtn.addEventListener('click', () => {
-        deleteGiftItem(gift.id);
-      });
-    }
+    card.querySelector('.status-select-btn').addEventListener('change', (e) => {
+      changeGiftStatus(gift.id, e.target.value);
+    });
+    card.querySelector('.btn-edit').addEventListener('click', () => {
+      if (window.openEditGiftModal) window.openEditGiftModal(gift.id);
+    });
+    card.querySelector('.btn-del').addEventListener('click', () => {
+      deleteGiftItem(gift.id);
+    });
 
     container.appendChild(card);
   });
 }
 
-function changeGiftStatus(id, newStatus) {
-  let gifts = getGifts();
-  gifts = gifts.map(g => {
-    if (g.id === id) {
-      return { ...g, status: newStatus };
-    }
-    return g;
-  });
-  saveGifts(gifts);
-  renderGifts();
+async function changeGiftStatus(id, newStatus) {
+  if (sb && currentUser) {
+    const { error } = await sb.from('gifts').update({ status: newStatus }).eq('id', id);
+    if (error) showToast('⚠️ ' + error.message);
+    await loadGifts();
+  } else {
+    const gifts = getGuestGifts().map(g => g.id === id ? { ...g, status: newStatus } : g);
+    saveGuestGifts(gifts);
+    await loadGifts();
+  }
 }
 
-function deleteGiftItem(id) {
-  if (confirm(t('confirmDelete'))) {
-    let gifts = getGifts();
-    gifts = gifts.filter(g => g.id !== id);
-    saveGifts(gifts);
-    renderGifts();
+async function deleteGiftItem(id) {
+  if (!confirm(t('confirmDelete'))) return;
+  if (sb && currentUser) {
+    const { error } = await sb.from('gifts').delete().eq('id', id);
+    if (error) showToast('⚠️ ' + error.message);
+    else showToast(t('toastGiftDeleted'));
+    await loadGifts();
+  } else {
+    const gifts = getGuestGifts().filter(g => g.id !== id);
+    saveGuestGifts(gifts);
+    await loadGifts();
     showToast(t('toastGiftDeleted'));
   }
 }
 
 function updateListBadge() {
   const badge = document.getElementById('list-badge-count');
-  if (badge) {
-    const count = getGifts().length;
-    badge.textContent = String(count);
-  }
+  if (badge) badge.textContent = String(cachedGifts.length);
 }
 
-// --- 7. CITATIONS FESTIVES ---
+// --- 8. CITATIONS & NEIGE ---
 function initQuotes() {
   const nextQuoteBtn = document.getElementById('btn-next-quote');
-  if (nextQuoteBtn) {
-    nextQuoteBtn.addEventListener('click', () => {
-      displayRandomQuote();
-    });
-  }
+  if (nextQuoteBtn) nextQuoteBtn.addEventListener('click', displayRandomQuote);
   displayRandomQuote();
 }
 
@@ -1153,17 +1144,13 @@ function displayRandomQuote() {
   const quoteText = document.getElementById('festive-quote-text');
   if (!quoteText) return;
   const list = festiveQuotes[currentLang] || festiveQuotes.fr;
-  const randomIndex = Math.floor(Math.random() * list.length);
-  quoteText.textContent = `"${list[randomIndex]}"`;
+  quoteText.textContent = `"${list[Math.floor(Math.random() * list.length)]}"`;
 }
 
-// --- 8. EFFET FLOCONS DE NEIGE SUR CANVAS ---
 function initSnowCanvas() {
   const canvas = document.getElementById('snow-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
   const snowToggle = document.getElementById('snow-toggle');
 
   let width = window.innerWidth;
@@ -1178,48 +1165,32 @@ function initSnowCanvas() {
     canvas.height = height;
   });
 
-  const particleCount = 65;
-  const particles = [];
-
-  for (let i = 0; i < particleCount; i++) {
-    particles.push({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      r: Math.random() * 2.8 + 1,
-      speedY: Math.random() * 1.1 + 0.5,
-      speedX: Math.random() * 0.8 - 0.4,
-      opacity: Math.random() * 0.6 + 0.3
-    });
-  }
+  const particles = Array.from({ length: 65 }, () => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    r: Math.random() * 2.8 + 1,
+    speedY: Math.random() * 1.1 + 0.5,
+    speedX: Math.random() * 0.8 - 0.4,
+    opacity: Math.random() * 0.6 + 0.3
+  }));
 
   function draw() {
     ctx.clearRect(0, 0, width, height);
-
-    if (!snowEnabled) {
-      requestAnimationFrame(draw);
-      return;
+    if (snowEnabled) {
+      particles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+        ctx.fill();
+        p.y += p.speedY;
+        p.x += p.speedX;
+        if (p.y > height) { p.y = -10; p.x = Math.random() * width; }
+        if (p.x > width) p.x = 0;
+        if (p.x < 0) p.x = width;
+      });
     }
-
-    particles.forEach(p => {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2, false);
-      ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
-      ctx.fill();
-
-      p.y += p.speedY;
-      p.x += p.speedX;
-
-      if (p.y > height) {
-        p.y = -10;
-        p.x = Math.random() * width;
-      }
-      if (p.x > width) p.x = 0;
-      if (p.x < 0) p.x = width;
-    });
-
     requestAnimationFrame(draw);
   }
-
   draw();
 
   if (snowToggle) {
@@ -1231,20 +1202,14 @@ function initSnowCanvas() {
   }
 }
 
-// --- 9. TOAST NOTIFICATIONS ---
 function showToast(message) {
   const container = document.getElementById('toast-container');
   if (!container) return;
-
   const toast = document.createElement('div');
   toast.className = 'toast';
   toast.textContent = message;
-
   container.appendChild(toast);
-
-  setTimeout(() => {
-    try { toast.remove(); } catch (e) {}
-  }, 3500);
+  setTimeout(() => { try { toast.remove(); } catch (e) {} }, 3500);
 }
 
 function escapeHtml(str) {
