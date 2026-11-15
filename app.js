@@ -5,8 +5,8 @@
  */
 
 // --- CONFIGURATION SUPABASE (À REMPLIR AVEC TES IDENTIFIANTS) ---
-const SUPABASE_URL = 'https://TON-PROJET.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_TA_CLE_ICI';
+const SUPABASE_URL = 'https://fkljunmiicinofejokor.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_2XREFzr4nxZjhm8gbx_0WA_ze0A1hoj';
 
 const isSupabaseConfigured =
   typeof window.supabase !== 'undefined' &&
